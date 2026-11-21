@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Proxy</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0; font-family: system-ui, sans-serif; display: flex; flex-direction: column; height: 100vh; }
+    form { display: flex; gap: .5rem; padding: .5rem; }
+    input { flex: 1; padding: .5rem .75rem; font-size: 1rem; }
+    button { padding: .5rem 1rem; font-size: 1rem; }
+    #status { padding: 0 .75rem .5rem; font-size: .8rem; opacity: .7; }
+    #frame-container { flex: 1; }
+    #frame-container iframe { width: 100%; height: 100%; border: 0; }
+  </style>
+  <!-- Must load before app.js: it defines $scramjetLoadController -->
+  <script src="/scram/scramjet.all.js"></script>
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <form id="form">
+    <input id="url" placeholder="Search or enter a URL" autocomplete="off" autofocus>
+    <button>Go</button>
+  </form>
+  <div id="status">Starting…</div>
+  <div id="frame-container"></div>
+</body>
+</html>

@@ -1,10 +1,20 @@
 "use strict";
 /**
- * Wisp v1 backend (drop-in replacement for the Refract placeholder server.js).
- * Hosting platforms provide TLS, so clients connect with wss://your-app-url/
+ * Minimal Wisp v1 server (https://github.com/MercuryWorkshop/wisp-protocol)
  *
- * Env: PORT (set by the host)   WISP_PATH=/ (default: accept Wisp on any path)
- *      ALLOW_PRIVATE=1 (local testing only)
+ * Packet layout (all little-endian):
+ *   [1 byte type][4 bytes stream id][payload...]
+ *
+ * Types:
+ *   0x01 CONNECT   payload: [1 byte stream type (1=TCP, 2=UDP)][2 bytes port][hostname utf8]
+ *   0x02 DATA      payload: raw bytes
+ *   0x03 CONTINUE  payload: [4 bytes remaining buffer, in packets]  (server -> client)
+ *   0x04 CLOSE     payload: [1 byte reason]
+ *
+ * Run:   npm install ws && node server.js
+ * Env:   PORT=8080  HOST=0.0.0.0  WISP_PATH=/wisp/
+ *        TLS_CERT=/path/fullchain.pem TLS_KEY=/path/privkey.pem   (enables wss:// directly)
+ *        ALLOW_PRIVATE=1   (allow connections to private/loopback IPs - local testing only)
  */
 
 const http = require("http");
@@ -13,12 +23,14 @@ const fs = require("fs");
 const net = require("net");
 const dgram = require("dgram");
 const dns = require("dns").promises;
+const path = require("path");
+const express = require("express");
 const { WebSocketServer } = require("ws");
 
 // ---------- config ----------
-const PORT = parseInt(process.env.PORT || "3000", 10);
+const PORT = parseInt(process.env.PORT || "8080", 10); // Render sets PORT
 const HOST = process.env.HOST || "0.0.0.0";
-const WISP_PATH = process.env.WISP_PATH || "/";
+const WISP_PATH = process.env.WISP_PATH || "/wisp/";
 const ALLOW_PRIVATE = process.env.ALLOW_PRIVATE === "1";
 const BUFFER_SIZE = 128;          // packets the client may have in flight per stream
 const MAX_STREAMS = 256;          // per websocket connection
@@ -87,11 +99,8 @@ function errorToReason(err) {
 }
 
 // ---------- server setup ----------
-const handler = (req, res) => {
-  const url = (req.url || "").split("?")[0];
-  res.writeHead(200, { "content-type": "application/json" });
-  res.end(JSON.stringify(url === "/health" ? { status: "ok" } : { name: "Refract Backend", status: "online" }));
-};
+const app = express();
+const handler = app;
 
 const server =
   process.env.TLS_CERT && process.env.TLS_KEY
@@ -277,7 +286,22 @@ wss.on("connection", (ws) => {
   ws.on("error", cleanup);
 });
 
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Wisp backend listening on port ${PORT} (path ${WISP_PATH})`);
-  if (ALLOW_PRIVATE) console.warn("WARNING: ALLOW_PRIVATE=1, private IPs are reachable through this server");
-});
+(async () => {
+  // These packages are ESM-only, so load them with dynamic import().
+  const { scramjetPath } = await import("@mercuryworkshop/scramjet/path");
+  const { baremuxPath } = await import("@mercuryworkshop/bare-mux/node");
+  const { epoxyPath } = await import("@mercuryworkshop/epoxy-transport");
+
+  app.get("/health", (req, res) => res.json({ status: "ok" }));
+  app.use("/scram/", express.static(scramjetPath));
+  app.use("/baremux/", express.static(baremuxPath));
+  app.use("/epoxy/", express.static(epoxyPath));
+  app.use(express.static(path.join(__dirname, "public")));
+
+  server.listen(PORT, HOST, () => {
+    const scheme = process.env.TLS_CERT ? "https" : "http";
+    console.log(`Proxy site:  ${scheme}://${HOST}:${PORT}/`);
+    console.log(`Wisp server: ${scheme === "https" ? "wss" : "ws"}://${HOST}:${PORT}${WISP_PATH}`);
+    if (ALLOW_PRIVATE) console.warn("WARNING: ALLOW_PRIVATE=1, private IPs are reachable through this server");
+  });
+})();

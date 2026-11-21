@@ -1,8 +1,15 @@
 {
-  "name": "refract-proxy",
+  "name": "scramjet-wisp-proxy",
   "version": "1.0.0",
   "private": true,
+  "main": "server.js",
   "scripts": { "start": "node server.js" },
   "engines": { "node": ">=18" },
-  "dependencies": { "ws": "^8.18.3" }
+  "dependencies": {
+    "@mercuryworkshop/bare-mux": "^2.1.7",
+    "@mercuryworkshop/epoxy-transport": "^2.1.28",
+    "@mercuryworkshop/scramjet": "2.0.0-alpha",
+    "express": "^4.21.0",
+    "ws": "^8.18.0"
+  }
 }
