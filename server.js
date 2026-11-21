@@ -185,12 +185,16 @@ wss.on("connection", (ws) => {
     // Resolve + validate before connecting (prevents DNS-rebinding style SSRF)
     let ip = host;
     try {
-      if (!net.isIP(host)) ip = (await dns.lookup(host)).address;
+      if (!net.isIP(host)) {
+        try { ip = (await dns.lookup(host, { family: 4 })).address; }   // prefer IPv4
+        catch { ip = (await dns.lookup(host)).address; }
+      }
     } catch (err) {
+      console.warn(`[dns error] ${host} ${err.code || ""}`);
       return teardown(id, R.UNREACHABLE, true);
     }
     if (stream.closed) return;
-    if (isBlocked(ip)) return teardown(id, R.BLOCKED, true);
+    if (isBlocked(ip)) { console.warn(`[blocked] ${host} -> ${ip}`); return teardown(id, R.BLOCKED, true); }
 
     if (type === S.TCP) openTcp(stream, ip, port);
     else openUdp(stream, ip, port);
@@ -227,7 +231,10 @@ wss.on("connection", (ws) => {
         }, 25);
       }
     });
-    sock.on("error", (err) => teardown(stream.id, errorToReason(err), true));
+    sock.on("error", (err) => {
+      console.warn(`[tcp error] ${ip}:${port} ${err.code || ""} ${err.message}`);
+      teardown(stream.id, errorToReason(err), true);
+    });
     sock.on("close", () => teardown(stream.id, R.VOLUNTARY, true));
   }
 
