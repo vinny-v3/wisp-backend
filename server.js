@@ -61,13 +61,19 @@ const blocklist = new net.BlockList();
   ["198.18.0.0", 15], ["224.0.0.0", 4], ["240.0.0.0", 4],
 ].forEach(([a, p]) => blocklist.addSubnet(a, p, "ipv4"));
 [
-  ["::", 128], ["::1", 128], ["fc00::", 7], ["fe80::", 10], ["ff00::", 8], ["::ffff:0:0", 96],
+  ["::", 128], ["::1", 128], ["fc00::", 7], ["fe80::", 10], ["ff00::", 8],
 ].forEach(([a, p]) => blocklist.addSubnet(a, p, "ipv6"));
 
 function isBlocked(ip) {
   if (ALLOW_PRIVATE) return false;
-  const family = net.isIPv6(ip) ? "ipv6" : "ipv4";
-  return blocklist.check(ip, family);
+  if (net.isIPv6(ip)) {
+    // IPv4-mapped IPv6 (::ffff:a.b.c.d): check the embedded IPv4 address instead.
+    // (Don't add a ::ffff:0:0/96 rule to the blocklist: Node treats every IPv4 address as matching it.)
+    const m = ip.toLowerCase().match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+    if (m) ip = m[1];
+    else if (/^::ffff:/i.test(ip)) return true;
+  }
+  return blocklist.check(ip, net.isIPv6(ip) ? "ipv6" : "ipv4");
 }
 
 // ---------- packet helpers ----------
