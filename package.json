@@ -8,7 +8,7 @@
   "dependencies": {
     "@mercuryworkshop/bare-mux": "^2.1.7",
     "@mercuryworkshop/epoxy-transport": "^2.1.28",
-    "@mercuryworkshop/scramjet": "2.0.0-alpha",
+    "@mercuryworkshop/scramjet": "1.1.0",
     "express": "^4.21.0",
     "ws": "^8.18.0"
   }

@@ -288,7 +288,10 @@ wss.on("connection", (ws) => {
 
 (async () => {
   // These packages are ESM-only, so load them with dynamic import().
-  const { scramjetPath } = await import("@mercuryworkshop/scramjet/path");
+  const sjMod = await import("@mercuryworkshop/scramjet/path");
+  const scramjetPath =
+    sjMod.scramjetPath || sjMod.path || sjMod.default ||
+    path.join(__dirname, "node_modules/@mercuryworkshop/scramjet/dist");
   const { baremuxPath } = await import("@mercuryworkshop/bare-mux/node");
   const { epoxyPath } = await import("@mercuryworkshop/epoxy-transport");
 
